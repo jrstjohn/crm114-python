@@ -1,5 +1,6 @@
 import os
 import string
+import subprocess
 
 CRM_BINARY = 'crm'
 
@@ -40,18 +41,20 @@ class Classifier(object):
         name of the category that best matches the text. """
 
         # need to escape path separator for the regex matching
-        path = string.replace(self.path, os.sep, '\\%s' % os.sep)
+        path = str.replace(self.path, os.sep, '\\%s' % os.sep)
 
         command = CRM_BINARY + (CLASSIFY_CMD % (CLASSIFICATION_TYPE,
                                                 self.file_list_string(),
                                                 path,
                                                 CLASSIFICATION_EXT))
-        fin, fout = os.popen2(command)
+        p = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
+        (fin, fout) = (p.stdin, p.stdout)
         #print('- Command:   %s' % command)
-        fin.write(text)
+        fin.write(bytes(text + "\n", 'utf-8'))
+        fin.flush()
         fin.close()
 
-        output_list = string.split(fout.readline())
+        output_list = str.split(str(fout.readline(), encoding='utf-8'))
         fout.close()
 
         if output_list is None:
@@ -81,7 +84,7 @@ class Classifier(object):
             return os.path.join(self.path, category + CLASSIFICATION_EXT)
 
         # Return list of all category paths
-        return map(_file_path, self.categories)
+        return list(map(_file_path, self.categories))
 
     # return a list of classification files as a string
     def file_list_string(self):
